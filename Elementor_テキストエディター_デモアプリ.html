@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elementor コードボタン ガイド</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f1f5f9; font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+    details summary::-webkit-details-marker { color: #94a3b8; }
+    ::-webkit-scrollbar { height: 4px; width: 4px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .resizer:hover .resizer-bar { background: linear-gradient(to bottom, #94a3b8, #64748b, #94a3b8) !important; }
+    .resizer:hover .resizer-handle { background: #64748b !important; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useCallback } = React;
+
+const categories = [
+  {
+    id: "basic", label: "📝 テキスト装飾", color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe",
+    buttons: [
+      { name: "b", desc: "太字", tagOpen: "<strong>", tagClose: "</strong>", html: "<strong>選択テキスト</strong>", preview: "これは<strong>重要なテキスト</strong>です。", tip: "強調したい言葉に使う" },
+      { name: "i", desc: "斜体", tagOpen: "<em>", tagClose: "</em>", html: "<em>選択テキスト</em>", preview: "これは<em>斜体テキスト</em>です。", tip: "英語や書籍タイトルなどに" },
+      { name: "link", desc: "リンク", tagOpen: '<a href="URL">', tagClose: "</a>", html: '<a href="URL">選択テキスト</a>', preview: '<a href="#" style="color:#3b82f6">公式サイトはこちら</a>', tip: "テキストをリンクにする" },
+      { name: "del", desc: "打ち消し線", tagOpen: "<del>", tagClose: "</del>", html: "<del>選択テキスト</del>", preview: "通常価格<del>¥10,000</del>→ 今だけ ¥5,000", tip: "値下げ・訂正の表現に" },
+      { name: "img", desc: "画像挿入", tagOpen: '<img src="', tagClose: '" alt="説明文" />', html: '<img src="画像URL" alt="説明文" />', preview: "🖼️ 画像がここに表示されます", tip: "メディアライブラリの画像URLを使う" },
+    ]
+  },
+  {
+    id: "layout", label: "🧱 レイアウト", color: "#8b5cf6", bg: "#f5f3ff", border: "#ddd6fe",
+    buttons: [
+      { name: "レイアウト2c", desc: "2カラム", tagOpen: '<div class="layout-2c"><div>', tagClose: "</div><div>右の内容</div></div>", html: '<div class="layout-2c">\n  <div>左の内容</div>\n  <div>右の内容</div>\n</div>', preview: "▌左 ｜ 右▐　2列に分割", tip: "画像＋テキストの横並びに" },
+      { name: "レイアウト3c", desc: "3カラム", tagOpen: '<div class="layout-3c"><div>', tagClose: "</div><div>中</div><div>右</div></div>", html: '<div class="layout-3c">\n  <div>左</div>\n  <div>中</div>\n  <div>右</div>\n</div>', preview: "▌左｜中｜右▐　3列に分割", tip: "商品3点並べなどに" },
+      { name: "h2", desc: "見出し2", tagOpen: "<h2>", tagClose: "</h2>", html: "<h2>選択テキスト</h2>", preview: "<h2 style='font-size:1.3em;font-weight:bold;margin:0'>セクションタイトル</h2>", tip: "ページの大見出し。SEOに重要" },
+      { name: "h3", desc: "見出し3", tagOpen: "<h3>", tagClose: "</h3>", html: "<h3>選択テキスト</h3>", preview: "<h3 style='font-size:1.1em;font-weight:bold;margin:0'>サブタイトル</h3>", tip: "h2の中の小見出し" },
+      { name: "h4", desc: "見出し4", tagOpen: "<h4>", tagClose: "</h4>", html: "<h4>選択テキスト</h4>", preview: "<h4 style='font-size:1em;font-weight:bold;margin:0'>小見出し</h4>", tip: "h3のさらに下の見出し" },
+      { name: "h5", desc: "見出し5", tagOpen: "<h5>", tagClose: "</h5>", html: "<h5>選択テキスト</h5>", preview: "<h5 style='font-size:0.9em;font-weight:bold;margin:0'>極小見出し</h5>", tip: "細かい補足見出しに" },
+    ]
+  },
+  {
+    id: "box", label: "📦 囲み枠", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a",
+    buttons: [
+      { name: "囲み枠a", desc: "シンプルな枠", tagOpen: '<div class="box-a">', tagClose: "</div>", html: '<div class="box-a">選択テキスト</div>', preview: '<div style="border:2px solid #ccc;padding:12px;border-radius:4px">ここに本文テキストを入力します</div>', tip: "注意書き・補足情報に" },
+      { name: "囲み枠b", desc: "色付きの枠", tagOpen: '<div class="box-b">', tagClose: "</div>", html: '<div class="box-b">選択テキスト</div>', preview: '<div style="border-left:4px solid #f59e0b;background:#fffbeb;padding:12px">重要なお知らせ内容</div>', tip: "強調ボックスに" },
+      { name: "囲み枠c", desc: "影付きの枠", tagOpen: '<div class="box-c">', tagClose: "</div>", html: '<div class="box-c">選択テキスト</div>', preview: '<div style="box-shadow:0 2px 8px rgba(0,0,0,0.15);padding:12px;border-radius:6px">コンテンツをここに</div>', tip: "カード風のデザインに" },
+    ]
+  },
+  {
+    id: "button", label: "🔘 ボタン", color: "#10b981", bg: "#f0fdf4", border: "#bbf7d0",
+    buttons: [
+      { name: "フラットボタン", desc: "標準ボタン", tagOpen: '<a href="URL" class="flat-btn">', tagClose: "</a>", html: '<a href="URL" class="flat-btn">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#555;color:#fff;padding:8px 20px;border-radius:3px;text-decoration:none">詳しくはこちら</a>', tip: "通常のCTAボタン" },
+      { name: "フラットボタン-L", desc: "大きめボタン", tagOpen: '<a href="URL" class="flat-btn-l">', tagClose: "</a>", html: '<a href="URL" class="flat-btn-l">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#555;color:#fff;padding:12px 32px;border-radius:3px;text-decoration:none;font-size:16px">詳しくはこちら</a>', tip: "目立たせたいCTAに" },
+      { name: "フラットボタン-S", desc: "小さめボタン", tagOpen: '<a href="URL" class="flat-btn-s">', tagClose: "</a>", html: '<a href="URL" class="flat-btn-s">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#555;color:#fff;padding:4px 12px;border-radius:3px;text-decoration:none;font-size:12px">詳しくはこちら</a>', tip: "テキスト内の小さなリンクに" },
+      { name: "フラットボタン-blue", desc: "青いボタン", tagOpen: '<a href="URL" class="flat-btn-blue">', tagClose: "</a>", html: '<a href="URL" class="flat-btn-blue">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#3b82f6;color:#fff;padding:8px 20px;border-radius:3px;text-decoration:none">お問い合わせ</a>', tip: "信頼感を与えるボタン" },
+      { name: "フラットボタン-green", desc: "緑のボタン", tagOpen: '<a href="URL" class="flat-btn-green">', tagClose: "</a>", html: '<a href="URL" class="flat-btn-green">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#10b981;color:#fff;padding:8px 20px;border-radius:3px;text-decoration:none">今すぐ申し込む</a>', tip: "購入・申し込みボタンに" },
+      { name: "フラットボタン-red", desc: "赤いボタン", tagOpen: '<a href="URL" class="flat-btn-red">', tagClose: "</a>", html: '<a href="URL" class="flat-btn-red">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#ef4444;color:#fff;padding:8px 20px;border-radius:3px;text-decoration:none">期間限定！今すぐ</a>', tip: "緊急・限定オファーに" },
+      { name: "フラットボタン-yellow", desc: "黄色ボタン", tagOpen: '<a href="URL" class="flat-btn-yellow">', tagClose: "</a>", html: '<a href="URL" class="flat-btn-yellow">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#f59e0b;color:#fff;padding:8px 20px;border-radius:3px;text-decoration:none">キャンペーン情報</a>', tip: "注目・キャンペーンに" },
+      { name: "角丸ボタン", desc: "角丸ボタン", tagOpen: '<a href="URL" class="round-btn">', tagClose: "</a>", html: '<a href="URL" class="round-btn">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#555;color:#fff;padding:8px 24px;border-radius:24px;text-decoration:none">詳細を見る</a>', tip: "柔らかい印象のボタン" },
+      { name: "角丸ボタン-L", desc: "大きい角丸", tagOpen: '<a href="URL" class="round-btn-l">', tagClose: "</a>", html: '<a href="URL" class="round-btn-l">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#555;color:#fff;padding:12px 36px;border-radius:32px;text-decoration:none;font-size:16px">詳細を見る</a>', tip: "ヒーローエリアのCTAに" },
+      { name: "角丸ボタン-S", desc: "小さい角丸", tagOpen: '<a href="URL" class="round-btn-s">', tagClose: "</a>", html: '<a href="URL" class="round-btn-s">選択テキスト</a>', preview: '<a href="#" style="display:inline-block;background:#555;color:#fff;padding:4px 14px;border-radius:14px;text-decoration:none;font-size:12px">詳細を見る</a>', tip: "タグ・バッジ風に" },
+      { name: "ラウンドボタン", desc: "完全な丸ボタン", tagOpen: '<a href="URL" class="full-round-btn">', tagClose: "</a>", html: '<a href="URL" class="full-round-btn">▶</a>', preview: '<a href="#" style="display:inline-flex;align-items:center;justify-content:center;background:#555;color:#fff;width:40px;height:40px;border-radius:50%;text-decoration:none">▶</a>', tip: "SNSアイコンなど円形ボタンに" },
+      { name: "ラウンドボタン-L", desc: "大きい丸ボタン", tagOpen: '<a href="URL" class="full-round-btn-l">', tagClose: "</a>", html: '<a href="URL" class="full-round-btn-l">▶</a>', preview: '<a href="#" style="display:inline-flex;align-items:center;justify-content:center;background:#555;color:#fff;width:60px;height:60px;border-radius:50%;text-decoration:none;font-size:20px">▶</a>', tip: "再生ボタンなど大きなアイコンに" },
+      { name: "ラウンドボタン-S", desc: "小さい丸ボタン", tagOpen: '<a href="URL" class="full-round-btn-s">', tagClose: "</a>", html: '<a href="URL" class="full-round-btn-s">▶</a>', preview: '<a href="#" style="display:inline-flex;align-items:center;justify-content:center;background:#555;color:#fff;width:26px;height:26px;border-radius:50%;text-decoration:none;font-size:11px">▶</a>', tip: "小さいアクションボタンに" },
+    ]
+  },
+  {
+    id: "special", label: "⭐ 特殊機能", color: "#ec4899", bg: "#fdf2f8", border: "#fbcfe8",
+    buttons: [
+      { name: "YouTube", desc: "動画埋め込み", tagOpen: '[youtube id="', tagClose: '"]', html: '[youtube id="動画のID"]', preview: "🎬 YouTubeが埋め込まれます<br><small style='color:#888'>URLの ?v= 以降がID</small>", tip: "YouTube URLの末尾をIDとして使用" },
+      { name: "関連記事カードリンク", desc: "記事カード", tagOpen: '[card url="', tagClose: '"]', html: '[card url="記事のURL"]', preview: "📄 関連記事がカード表示されます", tip: "内部リンクをカードで見せる" },
+      { name: "広告", desc: "広告スペース", tagOpen: "", tagClose: "", html: "[ad]", preview: "📢 広告がここに表示されます", tip: "AdSense等の広告を挿入" },
+      { name: "改ページ", desc: "ページ分割", tagOpen: "", tagClose: "", html: "<!--nextpage-->", preview: "── ページ1 ──<br>↓<br>── ページ2 ──", tip: "長い記事を複数ページに分割" },
+      { name: "タグを閉じる", desc: "閉じタグ挿入", tagOpen: "</", tagClose: ">", html: "</タグ名>", preview: "開いたHTMLタグを閉じる", tip: "タグを閉じ忘れたときに" },
+    ]
+  },
+];
+
+function App() {
+  const [activeCategory, setActiveCategory] = useState("basic");
+  const [activeButton, setActiveButton] = useState(null);
+  const [editorText, setEditorText] = useState("ここにテキストを入力してください。\n\n例：重要なお知らせがあります。詳しくはこちらをご覧ください。\n\n文字を選択して、左のボタンの「⬇挿入」を押すとタグが適用されます。");
+  const [insertMsg, setInsertMsg] = useState("");
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
+  const [leftPct, setLeftPct] = useState(50);
+  const textareaRef = useRef(null);
+  const selectionRef = useRef({ start: 0, end: 0 });
+  const containerRef = useRef(null);
+  const isDragging = useRef(false);
+
+  const handleResizerMouseDown = (e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const onMove = (ev) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const pct = Math.min(75, Math.max(25, ((clientX - rect.left) / rect.width) * 100));
+      setLeftPct(pct);
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove);
+    window.addEventListener("touchend", onUp);
+  };
+
+  const currentCat = categories.find(c => c.id === activeCategory);
+  const currentBtn = currentCat ? currentCat.buttons.find(b => b.name === activeButton) : null;
+
+  const handleCatClick = (id) => {
+    setActiveCategory(id);
+    setActiveButton(null);
+    setInsertMsg("");
+  };
+
+  const saveSelection = () => {
+    const el = textareaRef.current;
+    if (el) selectionRef.current = { start: el.selectionStart, end: el.selectionEnd };
+  };
+
+  const handleInsert = useCallback((btn) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const { start, end } = selectionRef.current;
+    const selected = editorText.slice(start, end);
+    let inserted;
+    if (selected) {
+      inserted = editorText.slice(0, start) + btn.tagOpen + selected + btn.tagClose + editorText.slice(end);
+      setInsertMsg(`「${selected}」に ${btn.name} を挿入しました ✅`);
+    } else {
+      inserted = editorText.slice(0, start) + btn.html + editorText.slice(start);
+      setInsertMsg(`カーソル位置に ${btn.name} のコードを挿入しました ✅`);
+    }
+    setEditorText(inserted);
+    setTimeout(() => {
+      if (el) {
+        const newPos = selected ? start + btn.tagOpen.length + selected.length + btn.tagClose.length : start + btn.html.length;
+        el.focus();
+        el.setSelectionRange(newPos, newPos);
+        selectionRef.current = { start: newPos, end: newPos };
+      }
+    }, 0);
+    setTimeout(() => setInsertMsg(""), 2500);
+  }, [editorText]);
+
+  const handleCopyCode = () => {
+    if (!currentBtn) return;
+    navigator.clipboard.writeText(currentBtn.html);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 1500);
+  };
+
+  const handleCopyHtml = () => {
+    navigator.clipboard.writeText(editorText);
+    setCopiedHtml(true);
+    setTimeout(() => setCopiedHtml(false), 1500);
+  };
+
+  return (
+    <div style={{ fontFamily: "'Hiragino Sans','Yu Gothic','Meiryo',sans-serif", maxWidth: 1100, margin: "0 auto", padding: 16, background: "#fff", minHeight: "100vh" }}>
+
+      {/* ヘッダー */}
+      <div style={{ background: "linear-gradient(135deg,#667eea 0%,#764ba2 100%)", borderRadius: 12, padding: "16px 20px", marginBottom: 14, color: "#fff" }}>
+        <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Elementor テキストエディター</div>
+        <div style={{ fontSize: 20, fontWeight: "bold" }}>コードボタン ガイド</div>
+        <div style={{ fontSize: 12, opacity: 0.85, marginTop: 3 }}>左でボタンを選んで「⬇挿入」→ 右のエディターに反映 ／ 中央の仕切りをドラッグで幅調整</div>
+      </div>
+
+      {/* メインカラム */}
+      <div ref={containerRef} style={{ display: "flex", alignItems: "start", marginBottom: 14 }}>
+
+        {/* 左サイド */}
+        <div style={{ width: leftPct + "%", flexShrink: 0, minWidth: 0, paddingRight: 6 }}>
+
+          {/* 1: カテゴリタブ */}
+          <div style={{ overflowX: "auto", paddingBottom: 6, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 6, minWidth: "max-content" }}>
+              {categories.map(cat => (
+                <button key={cat.id} onClick={() => handleCatClick(cat.id)} style={{
+                  padding: "6px 12px", borderRadius: 20, border: "2px solid",
+                  borderColor: activeCategory === cat.id ? cat.color : "#e2e8f0",
+                  background: activeCategory === cat.id ? cat.bg : "#fff",
+                  color: activeCategory === cat.id ? cat.color : "#64748b",
+                  fontWeight: activeCategory === cat.id ? "bold" : "normal",
+                  fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
+                  transition: "all 0.15s", fontFamily: "inherit"
+                }}>{cat.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* 2: ボタングリッド */}
+          {currentCat && (
+            <div style={{ background: currentCat.bg, border: "1px solid " + currentCat.border, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: currentCat.color, fontWeight: "bold", marginBottom: 8 }}>ボタンを選んで詳細確認、または「⬇挿入」で直接適用</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {currentCat.buttons.map(btn => (
+                  <div key={btn.name} style={{ display: "flex", alignItems: "center" }}>
+                    <button onClick={() => setActiveButton(activeButton === btn.name ? null : btn.name)} style={{
+                      padding: "5px 10px", borderRadius: "6px 0 0 6px",
+                      border: "2px solid " + (activeButton === btn.name ? currentCat.color : currentCat.border),
+                      borderRight: "none",
+                      background: activeButton === btn.name ? currentCat.color : "#fff",
+                      color: activeButton === btn.name ? "#fff" : "#374151",
+                      fontSize: 12, cursor: "pointer", fontWeight: "500",
+                      transition: "all 0.15s", fontFamily: "inherit"
+                    }}>{btn.name}</button>
+                    <button
+                      onClick={() => handleInsert(btn)}
+                      onMouseEnter={e => { e.currentTarget.style.background = currentCat.color; e.currentTarget.style.color = "#fff"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = currentCat.bg; e.currentTarget.style.color = currentCat.color; }}
+                      style={{
+                        padding: "5px 8px", borderRadius: "0 6px 6px 0",
+                        border: "2px solid " + currentCat.color, borderLeft: "none",
+                        background: currentCat.bg, color: currentCat.color,
+                        fontSize: 11, cursor: "pointer", fontWeight: "bold",
+                        transition: "all 0.15s", fontFamily: "inherit", whiteSpace: "nowrap"
+                      }}
+                    >⬇挿入</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3: コード詳細カード */}
+          {currentBtn && (
+            <div style={{ border: "2px solid " + currentCat.color, borderRadius: 12, padding: 14, animation: "fadeIn 0.2s ease" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ background: currentCat.color, color: "#fff", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: "bold" }}>{currentBtn.name}</span>
+                  <span style={{ color: "#6b7280", fontSize: 12 }}>— {currentBtn.desc}</span>
+                </div>
+                <button onClick={() => handleInsert(currentBtn)} style={{
+                  padding: "5px 12px", borderRadius: 8,
+                  background: currentCat.color, color: "#fff",
+                  border: "none", fontSize: 12, fontWeight: "bold",
+                  cursor: "pointer", fontFamily: "inherit"
+                }}>⬇ 右のエリアに挿入</button>
+              </div>
+
+              <div style={{ background: "#fefce8", border: "1px solid #fde047", borderRadius: 6, padding: "6px 12px", marginBottom: 10, fontSize: 12, color: "#713f12" }}>
+                💡 {currentBtn.tip}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#64748b", marginBottom: 4 }}>📋 コード</div>
+                  <div style={{ position: "relative", background: "#1e293b", borderRadius: 8, padding: "10px 48px 10px 12px" }}>
+                    <pre style={{ margin: 0, color: "#7dd3fc", fontSize: 11, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{currentBtn.html}</pre>
+                    <button onClick={handleCopyCode} style={{
+                      position: "absolute", top: 7, right: 7,
+                      background: copiedCode ? "#10b981" : "#334155",
+                      color: "#fff", border: "none", borderRadius: 4,
+                      padding: "3px 7px", fontSize: 11, cursor: "pointer", fontFamily: "inherit"
+                    }}>{copiedCode ? "✓" : "コピー"}</button>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#64748b", marginBottom: 4 }}>👁 プレビュー</div>
+                  <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 10, fontSize: 12, minHeight: 44 }}
+                    dangerouslySetInnerHTML={{ __html: currentBtn.preview }} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* リサイザー */}
+        <div
+          className="resizer"
+          onMouseDown={handleResizerMouseDown}
+          onTouchStart={handleResizerMouseDown}
+          title="ドラッグで幅を調整"
+          style={{ width: 16, flexShrink: 0, alignSelf: "stretch", cursor: "col-resize", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 10 }}
+        >
+          <div className="resizer-bar" style={{ width: 4, height: "100%", minHeight: 80, background: "linear-gradient(to bottom, #e2e8f0, #cbd5e1, #e2e8f0)", borderRadius: 4 }} />
+          <div className="resizer-handle" style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", background: "#94a3b8", borderRadius: 4, padding: "8px 3px", display: "flex", flexDirection: "column", gap: 3, alignItems: "center" }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 2, height: 2, background: "#fff", borderRadius: "50%" }} />)}
+          </div>
+        </div>
+
+        {/* 右サイド：エディター */}
+        <div style={{ flex: 1, minWidth: 0, paddingLeft: 6, border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fafafa" }}>
+          <div style={{ fontSize: 13, fontWeight: "bold", color: "#374151", marginBottom: 10 }}>✏️ エディター</div>
+
+          {insertMsg && (
+            <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "7px 12px", marginBottom: 10, fontSize: 12, color: "#166534", animation: "fadeIn 0.2s ease" }}>
+              {insertMsg}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: "bold", color: "#64748b", marginBottom: 5 }}>📝 入力（HTMLコード）</div>
+            <textarea
+              ref={textareaRef}
+              value={editorText}
+              onChange={e => setEditorText(e.target.value)}
+              onMouseUp={saveSelection}
+              onKeyUp={saveSelection}
+              onSelect={saveSelection}
+              style={{
+                width: "100%", height: 180, padding: 10,
+                border: "1px solid #cbd5e1", borderRadius: 8,
+                fontSize: 12, fontFamily: "monospace",
+                resize: "vertical", lineHeight: 1.6,
+                outline: "none", background: "#fff", boxSizing: "border-box"
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: "bold", color: "#64748b", marginBottom: 5 }}>👁 プレビュー（実際の表示）</div>
+            <div
+              style={{
+                width: "100%", minHeight: 180, padding: 10,
+                border: "1px solid #cbd5e1", borderRadius: 8,
+                fontSize: 13, background: "#fff",
+                overflow: "auto", lineHeight: 1.7,
+                whiteSpace: "pre-wrap", resize: "vertical",
+                display: "block", boxSizing: "border-box"
+              }}
+              dangerouslySetInnerHTML={{ __html: editorText }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button onClick={handleCopyHtml} style={{
+              padding: "8px 18px", borderRadius: 8,
+              background: copiedHtml ? "#10b981" : "#1e293b",
+              color: "#fff", border: "none",
+              fontSize: 13, fontWeight: "bold", cursor: "pointer", fontFamily: "inherit",
+              transition: "background 0.2s"
+            }}>{copiedHtml ? "✓ コピーしました！" : "📋 HTMLコードをコピー"}</button>
+            <button onClick={() => setEditorText("")} style={{
+              padding: "8px 12px", borderRadius: 8,
+              background: "#fff", color: "#94a3b8",
+              border: "1px solid #e2e8f0",
+              fontSize: 13, cursor: "pointer", fontFamily: "inherit"
+            }}>🗑 クリア</button>
+            <span style={{ fontSize: 11, color: "#94a3b8" }}>Elementorに貼り付けてください</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 5: 全ボタン一覧表 */}
+      <details style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+        <summary style={{ padding: "10px 14px", background: "#f8fafc", cursor: "pointer", fontSize: 13, fontWeight: "bold", color: "#374151" }}>
+          📊 全ボタン一覧表（クリックで展開）
+        </summary>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9" }}>
+                <th style={{ padding: "8px 12px", textAlign: "left", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>ボタン名</th>
+                <th style={{ padding: "8px 12px", textAlign: "left", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>機能</th>
+                <th style={{ padding: "8px 12px", textAlign: "left", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.flatMap(cat =>
+                cat.buttons.map((btn, i) => (
+                  <tr key={btn.name} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                    <td style={{ padding: "7px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                      <span style={{ background: cat.bg, color: cat.color, border: "1px solid " + cat.border, borderRadius: 4, padding: "2px 6px", fontSize: 11, fontWeight: "bold" }}>{btn.name}</span>
+                    </td>
+                    <td style={{ padding: "7px 12px", borderBottom: "1px solid #f1f5f9", color: "#374151" }}>{btn.desc}</td>
+                    <td style={{ padding: "7px 12px", borderBottom: "1px solid #f1f5f9", color: "#6b7280" }}>{btn.tip}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
